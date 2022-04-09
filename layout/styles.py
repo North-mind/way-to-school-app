@@ -1,13 +1,17 @@
 
+SIDEBAR_STYLE = {
+    "height": "90vh",
+    "overflow": "hidden"
+}
+
 NAVBAR_STYLE = {
     "width": "100vw",
     "background-color": "#f0f0f0",
-    "padding": "20px"
+    "padding": "20px",
+    "overflow": "hidden"
 }
 
 MAP_STYLE = {
-    "background-color": "#202020",
-    "width": "100vw",
-    "height": "100vh",
-    "margin": "0px",
+    "overflow": "hidden",
+    "width": "100vw"
 }

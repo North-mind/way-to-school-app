@@ -5,8 +5,9 @@ homepage_layout = html.Content(
     children=[
             dbc.Container(
                 children=[
-                    html.H1("HomePage"),
+                    html.H1("Way-To-School")
                 ],
+                className="mt-5"
             )
         ],
     id="page-content"
