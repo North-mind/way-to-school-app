@@ -5,12 +5,14 @@ import dash_bootstrap_components as dbc
 from dash import html, dcc
 from layout.styles import MAP_STYLE
 from geodata.adm_units import AdmUnits
-
+external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 # Load data
 adm_data = AdmUnits(data_path=os.path.join("data/admin_units_pl.geojson"))
 geo_df = adm_data.get_data(data_level="gmi")
 df = pd.read_csv("data/school.csv")
+
+
 
 fig = px.scatter_mapbox(
     df,
@@ -36,7 +38,13 @@ public_status = [
     {"label": status, "value": status} for status in df["publicznosc_status"].unique()
 ]
 
-YEARS = [0, 1, 2, 3, 4, 5, 6, 7]
+#YEARS = [0, 1, 2, 3, 4, 5, 6, 7]external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+YEARS = [6, 10, 17, 23, 33, 57, 440]
+
+wojewodztwo = [
+    
+    wojewodztwo for wojewodztwo in df["wojewodztwo"].unique()
+]
 
 map_layout = html.Div(
     children=[
@@ -52,12 +60,18 @@ map_layout = html.Div(
                                     cause-of-death codes X40–X44 (unintentional), X60–X64 (suicide), X85 (homicide), or Y10–Y14 \
                                     (undetermined intent).",
                         ),
+                        html.Label('Wybierz województwo:'),
+                                dcc.Dropdown(list(wojewodztwo),list(wojewodztwo),    
+                                            multi=True)
                     ],
                     className="m-3 p-3 w-100",
                     style={"background-color": "#f8f9fa"}
+
+                    
                 ),
             ],
         ),
+        
         dbc.Row(
             children=[
                 dbc.Col(
@@ -66,21 +80,30 @@ map_layout = html.Div(
                             children=[
                                 html.P(
                                     id="slider-text",
-                                    children="Ustaw przedział czasowy:",
+                                    children="Ustaw przedział czasowy wieku szkoły:",
 
                                 ),
                                 dcc.RangeSlider(
                                     id="years-slider",
                                     min=min(YEARS),
                                     max=max(YEARS),
-                                    value=[1, 3],
+                                    value=[1, 440],
                                 ),
+                                
+                                dcc.Checklist(list(school_types), inline=True
+                                )
                             ],
                             className="p-3",
                             style={"background-color": "#f8f9fa"}
                         ),
+                        dcc.Tabs(id="tabs", value='tab-1', children=[
+                        dcc.Tab(label='Mapa szczegółowa', value='tab-1'),
+                        dcc.Tab(label='Województwo', value='tab-2'),
+                        dcc.Tab(label='Powiat', value='tab-3'),
+                        dcc.Tab(label='Wyznacz drogę do szkoły', value='tab-4')
+                        ]),
                         html.Div(
-                            id="heatmap-container",
+                            id="id='tabs-content'",
                             children=[
                                 dcc.Graph(
                                     id="county-choropleth",
@@ -90,13 +113,13 @@ map_layout = html.Div(
                             className="mt-3"
                         ),
                     ],
-                    width=6,
+                    width=7,
                 ),
                 dbc.Col(
                     children=[
                         html.Div(
                             children=[
-                                html.P(id="chart-selector", children="Select chart:"),
+                                html.P(id="chart-selector", children="Wybierz wykres:"),
                                 dcc.Dropdown(
                                     options=[
                                         {
@@ -104,11 +127,11 @@ map_layout = html.Div(
                                             "value": "show_absolute_deaths_single_year",
                                         },
                                         {
-                                            "label": "Histogram of total number of deaths (1999-2016)",
+                                            "label": "Podział wg statusu szkoły",
                                             "value": "absolute_deaths_all_time",
                                         },
                                         {
-                                            "label": "Age-adjusted death rate (single year)",
+                                            "label": "Histogram wieku szkół",
                                             "value": "show_death_rate_single_year",
                                         },
                                         {
@@ -139,7 +162,7 @@ map_layout = html.Div(
                             className="mt-4"
                         ),
                     ],
-                    width=6,
+                    width=5,
                 ),
             ]
         ),
