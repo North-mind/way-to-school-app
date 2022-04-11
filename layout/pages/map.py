@@ -16,6 +16,13 @@ app = dash.Dash(
     ],
 )
 
+theme = {
+    'dark': True,
+    'detail': '#007439',
+    'primary': '#00EA64',
+    'secondary': '#6E6E6E',
+}
+
 # Load data
 adm_data = AdmUnits(data_path=os.path.join("data/admin_units_pl.geojson"))
 geo_df = adm_data.get_data(data_level="gmi")
@@ -45,7 +52,7 @@ public_status = [
 ]
 
 #YEARS = [0, 1, 2, 3, 4, 5, 6, 7]external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-YEARS = [6, 10, 17, 23, 33, 57, 440]
+YEARS = [0, 6, 10, 17, 23, 33, 57, 440]
 
 wojewodztwo = [
     
@@ -68,7 +75,7 @@ map_layout = html.Div(
                                             multi=True)
                     ],
                     className="m-3 p-3 w-100",
-                    style={"background-color": "#f8f9fa"}
+                    style={"background-color": "#2D2C3B", 'color':'white'}
 
                     
                 ),
@@ -84,7 +91,7 @@ map_layout = html.Div(
                                 html.P(
                                     id="slider-text",
                                     children="Ustaw przedział czasowy wieku szkoły:",
-
+                                    
                                 ),
                                 dcc.RangeSlider(
                                     id="years-slider",
@@ -96,54 +103,30 @@ map_layout = html.Div(
                                 
                                 dcc.Dropdown(list(school_types),list(school_types),    
                                             multi=True)
-                                
                             ],
                             className="p-3",
-                            style={"background-color": "#f8f9fa"}
+                            style={"background-color": "#2D2C3B", 'color':'white'}
                         ),
-                        dcc.Tabs(
-                            id="tabs-with-classes-2",
-                            value='tab-2',
-                            parent_className='custom-tabs',
-                            className='custom-tabs-container',
+                        dcc.Tabs(id='tabs-example-1', value='tab-1', children=[
+                        dcc.Tab(label='Mapa szczegółowa', value='tab-1'),
+                        dcc.Tab(label='Województwo', value='tab-2'),
+                        dcc.Tab(label='Powiat', value='tab-3'),
+                        dcc.Tab(label='Wyznacz drogę do szkoły', value='tab-4'),
+                        ]),
+                        html.Div(id='tabs-example-content-1'),
+                        
+                        html.Div(
+                           id="id='tabs-content'",
                             children=[
-                                dcc.Tab(
-                                    label='Mapa szczegółowa',
-                                    value='tab-1',
-                                    className='custom-tab',
-                                    selected_className='custom-tab--selected'
+                                dcc.Graph(
+                                    id="county-choropleth",
+                                    figure=fig
                                 ),
-                                dcc.Tab(
-                                    label='Województwo',
-                                    value='tab-2',
-                                    className='custom-tab',
-                                    selected_className='custom-tab--selected'
-                                ),
-                                dcc.Tab(
-                                    label='Powiat',
-                                    value='tab-3', className='custom-tab',
-                                    selected_className='custom-tab--selected'
-                                ),
-                                dcc.Tab(
-                                    label='Wyznacz drogę do szkoły',
-                                    value='tab-4',
-                                    className='custom-tab',
-                                    selected_className='custom-tab--selected'
-                                ),
-                            ]),
-                            html.Div(id='tabs-content-classes-2')
-                        #html.Div(
-                        #    id="id='tabs-content'",
-                        #    children=[
-                        #        dcc.Graph(
-                        #            id="county-choropleth",
-                        #            figure=fig
-                        #        ),
-                        #    ],
-                        #    className="mt-3"
-                        #),
+                            ],
+                            className="mt-3"
+                        ),
                     ],
-                    width=7,
+                    width=8,
                 ),
                 dbc.Col(
                     children=[
@@ -175,7 +158,7 @@ map_layout = html.Div(
                                 ),
                             ],
                                 className="p-3",
-                                style={"background-color": "#f8f9fa"}
+                                style={"background-color": '#2D2C3B', 'color':'white'}
                         ),
                         dcc.Graph(
                             id="selected-data",
@@ -187,41 +170,56 @@ map_layout = html.Div(
                                     autofill=True,
                                     template="plotly_dark",
                                     margin=dict(t=75, r=50, b=100, l=50),
+                                    backgroundColor='#2D2C3B'
                                 ),
                             ),
-                            className="mt-4"
+                            className="mt-4",
+                            
                         ),
                     ],
-                    width=5,
+                    width=4,
                 ),
             ]
         ),
     ],
     className="p-5",
-    style={"height": "100%"}
+
+    style={"height": "100%", 'backgroundColor':'#1B1B24'}
 )
 
-@app.callback(Output('tabs-content-classes-2', 'children'),
-              Input('tabs-with-classes-2', 'value'))
+@app.callback(
+    Output('tabs-example-content-1', 'children'),
+    Input('tabs-example-1', 'value')
+)
 def render_content(tab):
     if tab == 'tab-1':
         return html.Div([
-            html.H3('Tab content 1')
+            html.H3('Tab content 1'),
+            dcc.Graph(
+                figure=dict(
+                    data=[dict(
+                        x=[1, 2, 3],
+                        y=[3, 1, 2],
+                        type='bar'
+                    )]
+                )
+            )
         ])
     elif tab == 'tab-2':
         return html.Div([
-            html.H3('Tab content 2')
-        ])
-    elif tab == 'tab-3':
-        return html.Div([
-            html.H3('Tab content 3')
-        ])
-    elif tab == 'tab-4':
-        return html.Div([
-            html.H3('Tab content 4')
+            html.H3('Tab content 2'),
+            dcc.Graph(
+                figure=dict(
+                    data=[dict(
+                        x=[1, 2, 3],
+                        y=[5, 10, 6],
+                        type='bar'
+                    )]
+                )
+            )
         ])
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run_server(debug=True)
 '''
 import os
