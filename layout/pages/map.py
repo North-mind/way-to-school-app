@@ -6,13 +6,20 @@ from dash import html, dcc
 from layout.styles import MAP_STYLE
 from geodata.adm_units import AdmUnits
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+from dash.dependencies import Input, Output
+from dash import dash, dcc, html
+
+app = dash.Dash(
+    __name__,
+    meta_tags=[
+        {"name": "viewport", "content": "width=device-width, initial-scale=1.0"}
+    ],
+)
 
 # Load data
 adm_data = AdmUnits(data_path=os.path.join("data/admin_units_pl.geojson"))
 geo_df = adm_data.get_data(data_level="gmi")
 df = pd.read_csv("data/school.csv")
-
-
 
 fig = px.scatter_mapbox(
     df,
@@ -31,8 +38,7 @@ fig.update_layout(
 
 # Options
 school_types = [
-    {"label": school_type, "value": school_type}
-    for school_type in df["school_typ_cat"].unique()
+    school_type for school_type in df["school_typ_cat"].unique()
 ]
 public_status = [
     {"label": status, "value": status} for status in df["publicznosc_status"].unique()
@@ -52,13 +58,10 @@ map_layout = html.Div(
             children=[
                 html.Div(
                     children=[
-                        html.H4(children="Rate of US Poison-Induced Deaths"),
+                        html.H4(children="Szkoły i placówki oświatowe"),
                         html.P(
                             id="description",
-                            children="† Deaths are classified using the International Classification of Diseases, \
-                                    Tenth Revision (ICD–10). Drug-poisoning deaths are defined as having ICD–10 underlying \
-                                    cause-of-death codes X40–X44 (unintentional), X60–X64 (suicide), X85 (homicide), or Y10–Y14 \
-                                    (undetermined intent).",
+                            #children="ffff.",
                         ),
                         html.Label('Wybierz województwo:'),
                                 dcc.Dropdown(list(wojewodztwo),list(wojewodztwo),    
@@ -90,28 +93,55 @@ map_layout = html.Div(
                                     value=[1, 440],
                                 ),
                                 
-                                dcc.Checklist(list(school_types), inline=True
-                                )
+                                
+                                dcc.Dropdown(list(school_types),list(school_types),    
+                                            multi=True)
+                                
                             ],
                             className="p-3",
                             style={"background-color": "#f8f9fa"}
                         ),
-                        dcc.Tabs(id="tabs", value='tab-1', children=[
-                        dcc.Tab(label='Mapa szczegółowa', value='tab-1'),
-                        dcc.Tab(label='Województwo', value='tab-2'),
-                        dcc.Tab(label='Powiat', value='tab-3'),
-                        dcc.Tab(label='Wyznacz drogę do szkoły', value='tab-4')
-                        ]),
-                        html.Div(
-                            id="id='tabs-content'",
+                        dcc.Tabs(
+                            id="tabs-with-classes-2",
+                            value='tab-2',
+                            parent_className='custom-tabs',
+                            className='custom-tabs-container',
                             children=[
-                                dcc.Graph(
-                                    id="county-choropleth",
-                                    figure=fig
+                                dcc.Tab(
+                                    label='Mapa szczegółowa',
+                                    value='tab-1',
+                                    className='custom-tab',
+                                    selected_className='custom-tab--selected'
                                 ),
-                            ],
-                            className="mt-3"
-                        ),
+                                dcc.Tab(
+                                    label='Województwo',
+                                    value='tab-2',
+                                    className='custom-tab',
+                                    selected_className='custom-tab--selected'
+                                ),
+                                dcc.Tab(
+                                    label='Powiat',
+                                    value='tab-3', className='custom-tab',
+                                    selected_className='custom-tab--selected'
+                                ),
+                                dcc.Tab(
+                                    label='Wyznacz drogę do szkoły',
+                                    value='tab-4',
+                                    className='custom-tab',
+                                    selected_className='custom-tab--selected'
+                                ),
+                            ]),
+                            html.Div(id='tabs-content-classes-2')
+                        #html.Div(
+                        #    id="id='tabs-content'",
+                        #    children=[
+                        #        dcc.Graph(
+                        #            id="county-choropleth",
+                        #            figure=fig
+                        #        ),
+                        #    ],
+                        #    className="mt-3"
+                        #),
                     ],
                     width=7,
                 ),
@@ -170,3 +200,104 @@ map_layout = html.Div(
     className="p-5",
     style={"height": "100%"}
 )
+
+@app.callback(Output('tabs-content-classes-2', 'children'),
+              Input('tabs-with-classes-2', 'value'))
+def render_content(tab):
+    if tab == 'tab-1':
+        return html.Div([
+            html.H3('Tab content 1')
+        ])
+    elif tab == 'tab-2':
+        return html.Div([
+            html.H3('Tab content 2')
+        ])
+    elif tab == 'tab-3':
+        return html.Div([
+            html.H3('Tab content 3')
+        ])
+    elif tab == 'tab-4':
+        return html.Div([
+            html.H3('Tab content 4')
+        ])
+
+if __name__ == "__main__":
+    app.run_server(debug=True)
+'''
+import os
+import pandas as pd
+import plotly.express as px
+import dash_bootstrap_components as dbc
+from dash import html, dcc
+from layout.styles import MAP_STYLE
+from geodata.adm_units import AdmUnits
+external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+from dash.dependencies import Input, Output
+from dash import dash, dcc, html
+
+# Initialize app
+
+app = dash.Dash(
+    __name__,
+    meta_tags=[
+        {"name": "viewport", "content": "width=device-width, initial-scale=1.0"}
+    ],
+)
+app.title = "US Opioid Epidemic"
+
+app.map_layout = html.Div([
+    dcc.Tabs(
+        id="tabs-with-classes-2",
+        value='tab-2',
+        parent_className='custom-tabs',
+        className='custom-tabs-container',
+        children=[
+            dcc.Tab(
+                label='Tab one',
+                value='tab-1',
+                className='custom-tab',
+                selected_className='custom-tab--selected'
+            ),
+            dcc.Tab(
+                label='Tab two',
+                value='tab-2',
+                className='custom-tab',
+                selected_className='custom-tab--selected'
+            ),
+            dcc.Tab(
+                label='Tab three, multiline',
+                value='tab-3', className='custom-tab',
+                selected_className='custom-tab--selected'
+            ),
+            dcc.Tab(
+                label='Tab four',
+                value='tab-4',
+                className='custom-tab',
+                selected_className='custom-tab--selected'
+            ),
+        ]),
+    html.Div(id='tabs-content-classes-2')
+])
+
+@app.callback(Output('tabs-content-classes-2', 'children'),
+              Input('tabs-with-classes-2', 'value'))
+def render_content(tab):
+    if tab == 'tab-1':
+        return html.Div([
+            html.H3('Tab content 1')
+        ])
+    elif tab == 'tab-2':
+        return html.Div([
+            html.H3('Tab content 2')
+        ])
+    elif tab == 'tab-3':
+        return html.Div([
+            html.H3('Tab content 3')
+        ])
+    elif tab == 'tab-4':
+        return html.Div([
+            html.H3('Tab content 4')
+        ])
+
+#if __name__ == '__main__':
+#    map_layout.run_server(debug=True)'''
