@@ -28,27 +28,27 @@ adm_data = AdmUnits(data_path=os.path.join("data/admin_units_pl.geojson"))
 geo_df = adm_data.get_data(data_level="gmi")
 df = pd.read_csv("data/school.csv")
 
-fig = px.scatter_mapbox(
-    df,
-    lat="lon",
-    lon="lat",
-    hover_name="nazwa",
-    hover_data=["publicznosc_status", "data_zalozenia", "school_typ_cat"],
-    mapbox_style="carto-positron",
-    zoom=6,
-    height=900
-)
-fig.update_layout(
-    margin={"r": 0, "t": 0, "l": 0, "b": 0},
-    mapbox_center={"lat": 52.1089496, "lon": 19.443120},
-)
+# fig = px.scatter_mapbox(
+#      df,
+#      lat="lon",
+#      lon="lat",
+#      hover_name="Nazwa",
+#      #hover_data=["Status", "Data_założenia",'Kategoria_szkoły'],
+#      mapbox_style="carto-positron",
+#      zoom=6,
+#      height=900
+#  )
+# fig.update_layout(
+#      margin={"r": 0, "t": 0, "l": 0, "b": 0},
+#      mapbox_center={"lat": 52.1089496, "lon": 19.443120},
+#  )
 
 # Options
 school_types = [
-    school_type for school_type in df["school_typ_cat"].unique()
+    school_type for school_type in df["Kategoria_szkoły"].unique()
 ]
 public_status = [
-    {"label": status, "value": status} for status in df["publicznosc_status"].unique()
+    {"label": status, "value": status} for status in df["Status"].unique()
 ]
 
 #YEARS = [0, 1, 2, 3, 4, 5, 6, 7]external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -56,7 +56,7 @@ YEARS = [0, 6, 10, 17, 23, 33, 57, 440]
 
 wojewodztwo = [
     
-    wojewodztwo for wojewodztwo in df["wojewodztwo"].unique()
+    wojewodztwo for wojewodztwo in df["Województwo"].unique()
 ]
 
 map_layout = html.Div(
@@ -71,8 +71,8 @@ map_layout = html.Div(
                             #children="ffff.",
                         ),
                         html.Label('Wybierz województwo:'),
-                                dcc.Dropdown(list(wojewodztwo),list(wojewodztwo),    
-                                            multi=True)
+                                dcc.Checklist(list(wojewodztwo),list(wojewodztwo),    
+                                            id='wojewodztwo-indicator', inline=False)
                     ],
                     className="m-3 p-3 w-100",
                     style={"background-color": "#2D2C3B", 'color':'white'}
@@ -88,43 +88,48 @@ map_layout = html.Div(
                     children=[
                         html.Div(
                             children=[
-                                html.P(
-                                    id="slider-text",
-                                    children="Ustaw przedział czasowy wieku szkoły:",
+                                # html.P(
+                                #     id="slider-text",
+                                #     children="Ustaw przedział czasowy wieku szkoły:",
                                     
-                                ),
-                                dcc.RangeSlider(
-                                    id="years-slider",
-                                    min=min(YEARS),
-                                    max=max(YEARS),
-                                    value=[1, 440],
-                                ),
+                                # ),
+                                # dcc.RangeSlider(
+                                #     id="years-slider",
+                                #     min=min(YEARS),
+                                #     max=max(YEARS),
+                                #     value=[1, 440],
+                                # ),
                                 
                                 
-                                dcc.Dropdown(list(school_types),list(school_types),    
-                                            multi=True)
+                                # dcc.Dropdown(list(school_types),list(school_types),    
+                                #             multi=True,id='school_types-indicator')
                             ],
                             className="p-3",
                             style={"background-color": "#2D2C3B", 'color':'white'}
                         ),
                         dcc.Tabs(id='tabs-example-1', value='tab-1', children=[
                         dcc.Tab(label='Mapa szczegółowa', value='tab-1'),
-                        dcc.Tab(label='Województwo', value='tab-2'),
-                        dcc.Tab(label='Powiat', value='tab-3'),
-                        dcc.Tab(label='Wyznacz drogę do szkoły', value='tab-4'),
+                        #dcc.Dropdown(list(school_types),list(school_types),    
+                        #                    multi=True,id='school_types-indicator'),
+                        dcc.Tab(label='Powiat', value='tab-2'),
+                        dcc.Tab(label='Gmina', value='tab-3'),
+                        #dcc.Tab(label='Gmina', value='tab-4')
+                        
+                        #dcc.Tab(label='Powiat', value='tab-3'),
+                        #dcc.Tab(label='Wyznacz drogę do szkoły', value='tab-4'),
                         ]),
                         html.Div(id='tabs-example-content-1'),
                         
-                        html.Div(
-                           id="id='tabs-content'",
-                            children=[
-                                dcc.Graph(
-                                    id="county-choropleth",
-                                    figure=fig
-                                ),
-                            ],
-                            className="mt-3"
-                        ),
+                        #html.Div(
+                        #    id="tabs-content'",
+                        #    children=[
+                        #        dcc.Graph(
+                        #            id="county-choropleth",
+                        #            figure=fig
+                        #        ),
+                        #    ],
+                        #    className="mt-3"
+                        #),
                     ],
                     width=8,
                 ),
@@ -158,7 +163,7 @@ map_layout = html.Div(
                                 ),
                             ],
                                 className="p-3",
-                                style={"background-color": '#2D2C3B', 'color':'white'}
+                                style={"background-color": '#2D2C3B', 'color':'black'}
                         ),
                         dcc.Graph(
                             id="selected-data",
@@ -186,116 +191,3 @@ map_layout = html.Div(
 
     style={"height": "100%", 'backgroundColor':'#1B1B24'}
 )
-
-@app.callback(
-    Output('tabs-example-content-1', 'children'),
-    Input('tabs-example-1', 'value')
-)
-def render_content(tab):
-    if tab == 'tab-1':
-        return html.Div([
-            html.H3('Tab content 1'),
-            dcc.Graph(
-                figure=dict(
-                    data=[dict(
-                        x=[1, 2, 3],
-                        y=[3, 1, 2],
-                        type='bar'
-                    )]
-                )
-            )
-        ])
-    elif tab == 'tab-2':
-        return html.Div([
-            html.H3('Tab content 2'),
-            dcc.Graph(
-                figure=dict(
-                    data=[dict(
-                        x=[1, 2, 3],
-                        y=[5, 10, 6],
-                        type='bar'
-                    )]
-                )
-            )
-        ])
-
-if __name__ == '__main__':
-    app.run_server(debug=True)
-'''
-import os
-import pandas as pd
-import plotly.express as px
-import dash_bootstrap_components as dbc
-from dash import html, dcc
-from layout.styles import MAP_STYLE
-from geodata.adm_units import AdmUnits
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-from dash.dependencies import Input, Output
-from dash import dash, dcc, html
-
-# Initialize app
-
-app = dash.Dash(
-    __name__,
-    meta_tags=[
-        {"name": "viewport", "content": "width=device-width, initial-scale=1.0"}
-    ],
-)
-app.title = "US Opioid Epidemic"
-
-app.map_layout = html.Div([
-    dcc.Tabs(
-        id="tabs-with-classes-2",
-        value='tab-2',
-        parent_className='custom-tabs',
-        className='custom-tabs-container',
-        children=[
-            dcc.Tab(
-                label='Tab one',
-                value='tab-1',
-                className='custom-tab',
-                selected_className='custom-tab--selected'
-            ),
-            dcc.Tab(
-                label='Tab two',
-                value='tab-2',
-                className='custom-tab',
-                selected_className='custom-tab--selected'
-            ),
-            dcc.Tab(
-                label='Tab three, multiline',
-                value='tab-3', className='custom-tab',
-                selected_className='custom-tab--selected'
-            ),
-            dcc.Tab(
-                label='Tab four',
-                value='tab-4',
-                className='custom-tab',
-                selected_className='custom-tab--selected'
-            ),
-        ]),
-    html.Div(id='tabs-content-classes-2')
-])
-
-@app.callback(Output('tabs-content-classes-2', 'children'),
-              Input('tabs-with-classes-2', 'value'))
-def render_content(tab):
-    if tab == 'tab-1':
-        return html.Div([
-            html.H3('Tab content 1')
-        ])
-    elif tab == 'tab-2':
-        return html.Div([
-            html.H3('Tab content 2')
-        ])
-    elif tab == 'tab-3':
-        return html.Div([
-            html.H3('Tab content 3')
-        ])
-    elif tab == 'tab-4':
-        return html.Div([
-            html.H3('Tab content 4')
-        ])
-
-#if __name__ == '__main__':
-#    map_layout.run_server(debug=True)'''
