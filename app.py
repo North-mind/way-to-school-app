@@ -1,9 +1,12 @@
 from fcntl import F_SETSIG
 import os
+from turtle import right
 import dash
 import dash_bootstrap_components as dbc
+from numpy import NaN
 import pandas as pd
 import plotly.express as px
+import numpy as np
 from dash import Input, Output, dcc, html, no_update
 
 from geodata.adm_units import AdmUnits
@@ -17,7 +20,9 @@ app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.layout = html.Div([navbar, homepage_layout])
 
 df = pd.read_csv("data/school.csv")
-
+#df['dl_centroid_pow'] = (np.sqrt(np.power((df.gps_sz_pow-df.lon),2)+np.power((df.gps_dl_pow-df.lat),2)))
+#   df['dl_centroid_gmi'] = (np.sqrt(np.power((df.gps_sz_gmi-df.lon),2)+np.power((df.gps_dl_gmi-df.lat),2)))
+        
 fig = px.scatter_mapbox(
     df,
     lat="lon",
@@ -39,10 +44,29 @@ fig.update_layout(
 def prep_map(data_level:str):
     adm_data = AdmUnits(data_path=os.path.join("data/admin_units_pl.geojson"))
     geo_df = adm_data.get_data(data_level=data_level)
+    geo_df.teryt = geo_df.teryt.astype(int)
 
+   # school_pow = df[['kod_terytorialny_powiat', 'dl_centroid_pow']].groupby('dl_centroid_pow').agg('mean').reset_index()
+   # school_gmi = df[['kod_terytorialny_gmina', 'dl_centroid_gmi']].groupby('dl_centroid_gmi').agg('mean').reset_index()
+
+
+    if data_level == 'pow':
+        col_cent = 'dl_centroid_pow'
+        school_pow = df[['kod_terytorialny_powiat', 'dl_centroid_pow']].groupby('kod_terytorialny_powiat').agg('mean').reset_index()
+        geo_pow = pd.merge(geo_df, school_pow, how='left', left_on="teryt", right_on="kod_terytorialny_powiat") 
+    elif data_level == 'gmi':
+        col_cent = 'dl_centroid_gmi'
+        school_gmi = df[['kod_terytorialny_gmina_prep2', 'dl_centroid_gmi']].groupby('kod_terytorialny_gmina_prep2').agg('mean').reset_index()
+        geo_pow = pd.merge(geo_df, school_gmi, how='left', left_on="teryt", right_on="kod_terytorialny_gmina_prep2")
+        
+    #school_df = df[[teryt_df, centroid_df]].groupby(centroid_df).agg('mean').reset_index()
+    #geo_pow = pd.merge(geo_df, school_pow, how='left', left_on="teryt", right_on=teryt_df)
+    
     fig_pow = px.choropleth_mapbox(
-    geo_df, geojson=geo_df.geometry, locations=geo_df.index, mapbox_style="carto-positron", zoom=6
+    geo_pow, geojson=geo_pow.geometry, locations=geo_pow.index, mapbox_style="carto-positron", zoom=6,color=col_cent ,
+    color_continuous_scale="Magma", opacity = 0.7
     )
+
     return fig_pow.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0}, mapbox_center={"lat": 52.1089496, "lon": 19.443120})
 
 

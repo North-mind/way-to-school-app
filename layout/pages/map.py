@@ -48,32 +48,6 @@ def make_treeview_data(filterLevel=0, filterColumn='Województwo', filterValue=N
 
 data_tree = make_treeview_data()
 
-# Load data
-#adm_data = AdmUnits(data_path=os.path.join("data/admin_units_pl.geojson"))
-#geo_df = adm_data.get_data(data_level="pow")
-
-#fig_pow = px.choropleth_mapbox(
-#    geo_df, geojson=geo_df.geometry, locations=geo_df.index, mapbox_style="carto-positron", zoom=5
-#)
-#fig_pow.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0}, mapbox_center={"lat": 52.1089496, "lon": 19.443120})
-
-#df = pd.read_csv("data/school.csv")
-
-# fig = px.scatter_mapbox(
-#      df,
-#      lat="lon",
-#      lon="lat",
-#      hover_name="Nazwa",
-#      #hover_data=["Status", "Data_założenia",'Kategoria_szkoły'],
-#      mapbox_style="carto-positron",
-#      zoom=6,
-#      height=900
-#  )
-# fig.update_layout(
-#      margin={"r": 0, "t": 0, "l": 0, "b": 0},
-#      mapbox_center={"lat": 52.1089496, "lon": 19.443120},
-#  )
-
 # Options
 school_types = [school_type for school_type in df["Kategoria_szkoły"].unique()]
 public_status = [{"label": status, "value": status} for status in df["Status"].unique()]
@@ -87,7 +61,7 @@ map_layout = html.Div(
     children=[
         dbc.Row(
             children=[
-                html.Div(
+                html.Div(children=[
                         html.H4("Szkoły i placówki oświatowe"),
                         #html.P(
                         #    id="description",
@@ -95,7 +69,7 @@ map_layout = html.Div(
                         #),
                         #html.Label("Wybierz województwo:"),
                         #dcc.Checklist(list(wojewodztwo), list(wojewodztwo), id="wojewodztwo-indicator", inline=False),
-                        
+                    ],
                     
                     style={"background-color": "#2D2C3B",'color':'white'},
                     className="m-3 p-3 w-100",
