@@ -8,6 +8,7 @@ import pandas as pd
 import plotly.express as px
 import numpy as np
 from dash import Input, Output, dcc, html, no_update
+import time
 
 from geodata.adm_units import AdmUnits
 from layout.navbar import navbar
@@ -20,55 +21,96 @@ app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.layout = html.Div([navbar, homepage_layout])
 
 df = pd.read_csv("data/school.csv")
+
+loading_style = {'align-self': 'center'}
+
 #df['dl_centroid_pow'] = (np.sqrt(np.power((df.gps_sz_pow-df.lon),2)+np.power((df.gps_dl_pow-df.lat),2)))
 #   df['dl_centroid_gmi'] = (np.sqrt(np.power((df.gps_sz_gmi-df.lon),2)+np.power((df.gps_dl_gmi-df.lat),2)))
         
-fig = px.scatter_mapbox(
-    df,
-    lat="lon",
-    lon="lat",
-    mapbox_style="carto-positron",
-    zoom=6,
-    height=900,
-    color="Kategoria_szkoły",
-    hover_data = {'lat':False, 'lon':False, 'Kategoria_szkoły':False},
-    hover_name = None
-)
-fig.update_layout(
-    margin={"r": 0, "t": 0, "l": 0, "b": 0},
-    mapbox_center={"lat": 52.1089496, "lon": 19.443120},
-    hovermode="closest",
+# fig = px.scatter_mapbox(
+#     df,
+#     lat="lon",
+#     lon="lat",
+#     mapbox_style="carto-positron",
+#     zoom=6,
+#     height=900,
+#     color="Kategoria_szkoły",
+#     hover_data = {'lat':False, 'lon':False, 'Kategoria_szkoły':False},
+#     hover_name = None,
+#     opacity=0.8,
+#     size_max=6,
+#     #color_discrete_sequence=[to_hex(c) for c in sns.color_palette('BrBG_r', 6)],
+# )
+# fig.update_layout(
+#     margin={"r": 0, "t": 0, "l": 0, "b": 0},
+#     mapbox_center={"lat": 52.1089496, "lon": 19.443120},
+#     hovermode="closest",
     
-)
+#)
 
-def prep_map(data_level:str):
+def prep_map_point(teryt_filter:list=[]):
+
+    teryt_filter = [int(teryt) for teryt in teryt_filter ]
+
+    if len(teryt_filter)==1 and teryt_filter[0]==0:
+        df_1 = df.copy()
+    else:
+        df_1 = df[df['kod_terytorialny_powiat'].isin(teryt_filter)].copy()
+
+    fig = px.scatter_mapbox(
+        data_frame = df_1,
+        lat="lon",
+        lon="lat",
+        mapbox_style="carto-positron",
+        zoom=6,
+        height=900,
+        color="Kategoria_szkoły",
+        hover_data = {'lat':False, 'lon':False, 'Kategoria_szkoły':False},
+        hover_name = None,
+        opacity=0.8,
+        size_max=6,
+        #color_discrete_sequence=[to_hex(c) for c in sns.color_palette('BrBG_r', 6)],
+    )
+
+    return fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0}, mapbox_center={"lat": 52.1089496, "lon": 19.443120},hovermode="closest")
+
+
+
+
+def prep_map(data_level:str, teryt_filter:list=[]):
     adm_data = AdmUnits(data_path=os.path.join("data/admin_units_pl.geojson"))
+
     geo_df = adm_data.get_data(data_level=data_level)
     geo_df.teryt = geo_df.teryt.astype(int)
+    geo_df.parent_id = geo_df.parent_id.astype(int)
 
-   # school_pow = df[['kod_terytorialny_powiat', 'dl_centroid_pow']].groupby('dl_centroid_pow').agg('mean').reset_index()
-   # school_gmi = df[['kod_terytorialny_gmina', 'dl_centroid_gmi']].groupby('dl_centroid_gmi').agg('mean').reset_index()
-
-
+    
     if data_level == 'pow':
         col_cent = 'dl_centroid_pow'
         school_pow = df[['kod_terytorialny_powiat', 'dl_centroid_pow']].groupby('kod_terytorialny_powiat').agg('mean').reset_index()
-        geo_pow = pd.merge(geo_df, school_pow, how='left', left_on="teryt", right_on="kod_terytorialny_powiat") 
+        geo_pow = pd.merge(geo_df, school_pow, how='inner', left_on="teryt", right_on="kod_terytorialny_powiat") 
     elif data_level == 'gmi':
         col_cent = 'dl_centroid_gmi'
         school_gmi = df[['kod_terytorialny_gmina_prep2', 'dl_centroid_gmi']].groupby('kod_terytorialny_gmina_prep2').agg('mean').reset_index()
-        geo_pow = pd.merge(geo_df, school_gmi, how='left', left_on="teryt", right_on="kod_terytorialny_gmina_prep2")
+        geo_pow = pd.merge(geo_df, school_gmi, how='inner', left_on="teryt", right_on="kod_terytorialny_gmina_prep2")
         
-    #school_df = df[[teryt_df, centroid_df]].groupby(centroid_df).agg('mean').reset_index()
-    #geo_pow = pd.merge(geo_df, school_pow, how='left', left_on="teryt", right_on=teryt_df)
+    
+    teryt_filter = [int(teryt) for teryt in teryt_filter ]
+    if teryt_filter == []:
+        geo_pow = geo_pow.copy()
+    elif len(teryt_filter)>0 and data_level=='pow':
+        geo_pow = geo_pow[geo_pow['teryt'].isin(teryt_filter)]
+    elif len(teryt_filter)>0 and data_level=='gmi':
+        geo_pow = geo_pow[geo_pow['parent_id'].isin(teryt_filter)]
+    
     
     fig_pow = px.choropleth_mapbox(
-    geo_pow, geojson=geo_pow.geometry, locations=geo_pow.index, mapbox_style="carto-positron", zoom=6,color=col_cent ,
-    color_continuous_scale="Magma", opacity = 0.7
+    geo_pow, geojson=geo_pow.geometry, locations=geo_pow.index, mapbox_style="carto-positron", zoom=6,color=col_cent ,height=900,
+    color_continuous_scale="Magma", opacity = 0.6, hover_data=['nazwa','podpowiedz'],labels={'index':data_level,'nazwa': 'Nazwa', 'podpowiedz':'Szczegóły',
+    col_cent: "Srednia odległość od centroidy"}
     )
 
     return fig_pow.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0}, mapbox_center={"lat": 52.1089496, "lon": 19.443120})
-
 
 
 @app.callback(Output("page-content", "children"), [Input("url", "pathname")])
@@ -93,41 +135,48 @@ def render_page_content(pathname):
         ]
     )
 
+@app.callback(
+     Output("county-choropleth-points", "figure"),#Output('loading', 'parent_style'),
+     [
+         Input('input', 'checked')
+     ],
+)
+def display_selected_data(checked):
 
-# @app.callback(
-#     Output("county-choropleth", "figure"),
-#     [
-#         # Input("school_types-indicator", "value"),
-#         Input("wojewodztwo-indicator", "value")
-#     ],
-# )
-# def display_selected_data(wojewodztwo):
+    fig = prep_map_point(checked)
+    
+    return fig
 
-#     # dff = df[df["Kategoria_szkoły"]=='Szkoła podstawowa']
-#     dff = df[(df["Województwo"].isin(wojewodztwo))]
-#     fig = px.scatter_mapbox(
-#         dff,
-#         lat="lon",
-#         lon="lat",
-#         hover_name="Nazwa",
-#         mapbox_style="carto-darkmatter",
-#         zoom=6,
-#         height=900,
-#         color="Kategoria_szkoły",
-#         color_discrete_map=px.colors.cyclical.IceFire,
-#         size_max=15
-#     )
-#     fig.update_layout(
-#         margin={"r": 0, "t": 0, "l": 0, "b": 0},
-#         mapbox_center={"lat": 52.1089496, "lon": 19.443120},
-#         hovermode="closest",
-#         # annotations=annotations,
-#     )
+#def input_triggers_spinner(checed):
+#    time.sleep(1)
+#    return value
+    
+@app.callback(
+     Output("county-choropleth-pow", "figure"),
+     [
+         Input('input', 'checked')
+     ],
+)
+def display_selected_data(checked):
 
-#     return fig
+    fig_pow = prep_map('pow', checked)
+    
+    return fig_pow
 
+@app.callback(
+     Output("county-choropleth-gmi", "figure"),
+     [
+         Input('input', 'checked')
+     ],
+)
+def display_selected_data(checked):
+
+    fig_gmi = prep_map('gmi', checked)
+    
+    return fig_gmi
 
 @app.callback(Output("tabs-example-content-1", "children"), Input("tabs-example-1", "value"))
+
 def render_content(tab):
     if tab == "tab-1":
         return html.Div(
@@ -135,8 +184,9 @@ def render_content(tab):
                 html.Div(
                     id="tabs-content'",
                     children=[
-                        dcc.Graph(id="county-choropleth", figure=fig
+                        dcc.Graph(id="county-choropleth-points", figure=prep_map_point([0])
                             ),
+                        #dcc.Loading(id='loading', parent_style=loading_style),
                         dcc.Tooltip(
                             id="graph-tooltip-1",
                             background_color="darkblue",
@@ -156,14 +206,15 @@ def render_content(tab):
                 html.Div(
                     id="tabs-content'",
                     children=[
-                        dcc.Graph(id="county-choropleth", figure=prep_map('pow')
+                        dcc.Graph(id="county-choropleth-pow", figure=prep_map('pow')
                             ),
+                        #dcc.Loading(id='loading', parent_style=loading_style),
                         dcc.Tooltip(
-                            id="graph-tooltip-1",
-                            background_color="darkblue",
-                            border_color="white",
-                            style={"color": "white", "width": "450px", "white-space": "normal"},
-                            loading_text="Wczytywanie danych ...",
+                        #     id="graph-tooltip-1",
+                        #     background_color="darkblue",
+                        #     border_color="white",
+                        #     style={"color": "white", "width": "450px", "white-space": "normal"},
+                        #     loading_text="Wczytywanie danych ...",
                             
                         ),
                     ],
@@ -177,14 +228,15 @@ def render_content(tab):
                 html.Div(
                     id="tabs-content'",
                     children=[
-                        dcc.Graph(id="county-choropleth", figure=prep_map('gmi')
+                        dcc.Graph(id="county-choropleth-gmi", figure=prep_map('gmi')
                             ),
+                        #dcc.Loading(id='loading', parent_style=loading_style),
                         dcc.Tooltip(
-                            id="graph-tooltip-1",
-                            background_color="darkblue",
-                            border_color="white",
-                            style={"color": "white", "width": "450px", "white-space": "normal"},
-                            loading_text="Wczytywanie danych ...",
+                        #     id="graph-tooltip-1",
+                        #     background_color="darkblue",
+                        #     border_color="white",
+                        #     style={"color": "white", "width": "450px", "white-space": "normal"},
+                        #     loading_text="Wczytywanie danych ...",
                             
                         ),
                     ],
@@ -197,7 +249,8 @@ def render_content(tab):
     Output("graph-tooltip-1", "show"),
     Output("graph-tooltip-1", "bbox"),
     Output("graph-tooltip-1", "children"),
-    Input("county-choropleth", "hoverData"),
+    
+    Input("county-choropleth-points", "hoverData"),
 )
 def update_tooltip_content(hoverData):
     if hoverData is None:
@@ -236,9 +289,7 @@ def update_tooltip_content(hoverData):
 
     children = [
         html.P(name, style={"font-weight": "bold", "font-size": "15px"}),
-        html.P(f"Typ: {kat} ({status}) \n Miejscowość: {miejscowosc}")
-        #"Adres: {}".format(ulica),
-        #"Woj: {}".format(woj)',)
+        html.P(f"Typ: {kat} ({status}) \n Miejscowość: {miejscowosc} Adres: {ulica} Woj: {woj}", style={"font-size": "13px"})
     ]
 
     return True, bbox, children

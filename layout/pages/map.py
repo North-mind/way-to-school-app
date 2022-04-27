@@ -27,6 +27,8 @@ app = dash.Dash(
 
 df = pd.read_csv("data/school.csv")
 
+loading_style = {'position': 'absolute', 'align-self': 'center'}
+
 def make_treeview_data(filterLevel=0, filterColumn='Województwo', filterValue=None):
     filterType = [
         ['Województwo', 'kod_terytorialny_wojewodztwo'],
