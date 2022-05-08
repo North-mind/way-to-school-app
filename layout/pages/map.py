@@ -18,13 +18,6 @@ app = dash.Dash(
     meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1.0"}],
 )
 
-# theme = {
-#     "dark": True,
-#     "detail": "#007439",
-#     "primary": "#00EA64",
-#     "secondary": "#6E6E6E",
-# }
-
 df = pd.read_csv("data/school.csv")
 
 loading_style = {'position': 'absolute', 'align-self': 'center'}
@@ -55,7 +48,6 @@ school_types = [school_type for school_type in df["Kategoria_szkoły"].unique()]
 public_status = [{"label": status, "value": status} for status in df["Status"].unique()]
 
 # YEARS = [0, 1, 2, 3, 4, 5, 6, 7]external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-YEARS = [0, 6, 10, 17, 23, 33, 57, 440]
 
 #wojewodztwo = [wojewodztwo for wojewodztwo in df["Województwo"].unique()]
 
@@ -64,8 +56,8 @@ map_layout = html.Div(
         dbc.Row(
             children=[
                 html.Div(children=[
-                        html.H4("Szkoły i placówki oświatowe"),
-                        #html.P(
+                        html.P("Baza szkół i placówek oświatowych", style={"font-weight": "bold", "font-size": "20px"}),
+                        html.P("Dane aktualne na: 14.01.2022r.")
                         #    id="description",
                             # children="ffff.",
                         #),

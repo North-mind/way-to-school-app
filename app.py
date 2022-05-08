@@ -24,30 +24,6 @@ df = pd.read_csv("data/school.csv")
 
 loading_style = {'align-self': 'center'}
 
-#df['dl_centroid_pow'] = (np.sqrt(np.power((df.gps_sz_pow-df.lon),2)+np.power((df.gps_dl_pow-df.lat),2)))
-#   df['dl_centroid_gmi'] = (np.sqrt(np.power((df.gps_sz_gmi-df.lon),2)+np.power((df.gps_dl_gmi-df.lat),2)))
-        
-# fig = px.scatter_mapbox(
-#     df,
-#     lat="lon",
-#     lon="lat",
-#     mapbox_style="carto-positron",
-#     zoom=6,
-#     height=900,
-#     color="Kategoria_szkoły",
-#     hover_data = {'lat':False, 'lon':False, 'Kategoria_szkoły':False},
-#     hover_name = None,
-#     opacity=0.8,
-#     size_max=6,
-#     #color_discrete_sequence=[to_hex(c) for c in sns.color_palette('BrBG_r', 6)],
-# )
-# fig.update_layout(
-#     margin={"r": 0, "t": 0, "l": 0, "b": 0},
-#     mapbox_center={"lat": 52.1089496, "lon": 19.443120},
-#     hovermode="closest",
-    
-#)
-
 def prep_map_point(teryt_filter:list=[]):
 
     teryt_filter = [int(teryt) for teryt in teryt_filter ]
@@ -91,8 +67,8 @@ def prep_map(data_level:str, teryt_filter:list=[]):
         geo_pow = pd.merge(geo_df, school_pow, how='inner', left_on="teryt", right_on="kod_terytorialny_powiat") 
     elif data_level == 'gmi':
         col_cent = 'dl_centroid_gmi'
-        school_gmi = df[['kod_terytorialny_gmina_prep2', 'dl_centroid_gmi']].groupby('kod_terytorialny_gmina_prep2').agg('mean').reset_index()
-        geo_pow = pd.merge(geo_df, school_gmi, how='inner', left_on="teryt", right_on="kod_terytorialny_gmina_prep2")
+        school_gmi = df[['teryt_geo', 'dl_centroid_gmi']].groupby('teryt_geo').agg('mean').reset_index()
+        geo_pow = pd.merge(geo_df, school_gmi, how='inner', left_on="teryt", right_on="teryt_geo")
         
     
     teryt_filter = [int(teryt) for teryt in teryt_filter ]
@@ -146,11 +122,7 @@ def display_selected_data(checked):
     fig = prep_map_point(checked)
     
     return fig
-
-#def input_triggers_spinner(checed):
-#    time.sleep(1)
-#    return value
-    
+ 
 @app.callback(
      Output("county-choropleth-pow", "figure"),
      [
