@@ -1,17 +1,10 @@
-import os
-
 import dash_bootstrap_components as dbc
 import dash_treeview_antd
 import pandas as pd
-import plotly.express as px
-from dash import dcc, html
-
-from geodata.adm_units import AdmUnits
+from dash import dash, dcc, html
 from layout.styles import MAP_STYLE
 
 external_stylesheets = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
-from dash import dash, dcc, html
-from dash.dependencies import Input, Output
 
 app = dash.Dash(
     __name__,
@@ -58,12 +51,7 @@ map_layout = html.Div(
                 html.Div(children=[
                         html.P("Baza szkół i placówek oświatowych", style={"font-weight": "bold", "font-size": "20px"}),
                         html.P("Dane aktualne na: 14.01.2022r.")
-                        #    id="description",
-                            # children="ffff.",
-                        #),
-                        #html.Label("Wybierz województwo:"),
-                        #dcc.Checklist(list(wojewodztwo), list(wojewodztwo), id="wojewodztwo-indicator", inline=False),
-                    ],
+                        ],
                     
                     style={"background-color": "#2D2C3B",'color':'white'},
                     className="m-3 p-3 w-100",
