@@ -11,11 +11,30 @@ import pandas as pd
 import plotly.express as px
 import numpy as np
 import os
+from layout.KDTree_gmi import distance_gmi
+
+import plotly.graph_objects as go
+
+
+#from sklearn.neighbors import KDTree
 
 from geodata.adm_units import AdmUnits
+      
+df = pd.read_csv("data/school.csv", usecols=['rspo','Kategoria_szkoły', 'lon', 'lat', 'kod_terytorialny_powiat','teryt_geo','Nazwa', 'Status','Województwo','Powiat','Miejscowość', 'Ulica', 'Nr_budynku','Nr_lokalu','dl_centroid_pow', 'dl_centroid_gmi'])
 
-df = pd.read_csv("data/school.csv")
+school_types = [school_type for school_type in df["Kategoria_szkoły"].unique()]
 
+adm_data = AdmUnits(data_path=os.path.join("data/admin_units_pl.geojson"))
+
+locations_school = df[['rspo', 'lat', 'lon']].copy()
+locations_gmi = pd.read_csv('data/gmi_centroid.csv')
+#locations_gmi = adm_data.get_data(data_level='gmi')
+#locations_gmi['centroid']=locations_gmi.geometry.centroid
+#locations_gmi['gps_sz_gmi'] = locations_gmi['centroid'].apply(lambda x: str(x).split(' ')[2].replace(')',''))
+#locations_gmi['gps_dl_gmi'] = locations_gmi['centroid'].apply(lambda x: str(x).split(' ')[1].replace('(',''))
+
+locations_school = locations_school[~locations_school['lon'].isnull()]
+#locations_gmi[['teryt','gps_sz_gmi','gps_dl_gmi']]
 def prep_map_point(teryt_filter:list=[]):
 
     teryt_filter = [int(teryt) for teryt in teryt_filter ]
@@ -35,15 +54,22 @@ def prep_map_point(teryt_filter:list=[]):
         color="Kategoria_szkoły",
         hover_data = {'lat':False, 'lon':False, 'Kategoria_szkoły':False},
         hover_name = None,
-        opacity=0.8,
+        opacity=0.4,
         size_max=6,
-        #color_discrete_sequence=[to_hex(c) for c in sns.color_palette('BrBG_r', 6)],
+        
+        #color_discrete_sequence=[matplotlib.to_hex(c) for c in sns.color_palette('BrBG_r', 6)],
     )
 
-    return fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0}, mapbox_center={"lat": 52.1089496, "lon": 19.443120},hovermode="closest")
+    fig.update_layout(
+        margin={"r": 0, "t": 0, "l": 0, "b": 0}, 
+        mapbox_center={"lat": 52.1089496, "lon": 19.443120},
+        hovermode="closest")
+
+       
+    return fig
 
 def prep_map(data_level:str, teryt_filter:list=[]):
-    adm_data = AdmUnits(data_path=os.path.join("data/admin_units_pl.geojson"))
+    #adm_data = AdmUnits(data_path=os.path.join("data/admin_units_pl.geojson"))
 
     geo_df = adm_data.get_data(data_level=data_level)
     geo_df.teryt = geo_df.teryt.astype(int)
@@ -52,12 +78,17 @@ def prep_map(data_level:str, teryt_filter:list=[]):
     
     if data_level == 'pow':
         col_cent = 'dl_centroid_pow'
-        school_pow = df[['kod_terytorialny_powiat', 'dl_centroid_pow']].groupby('kod_terytorialny_powiat').agg('mean').reset_index()
+        school_pow = df[['kod_terytorialny_powiat', 'dl_centroid_pow']].groupby('kod_terytorialny_powiat').agg('min').reset_index()
         geo_pow = pd.merge(geo_df, school_pow, how='inner', left_on="teryt", right_on="kod_terytorialny_powiat") 
     elif data_level == 'gmi':
-        col_cent = 'dl_centroid_gmi'
-        school_gmi = df[['teryt_geo', 'dl_centroid_gmi']].groupby('teryt_geo').agg('mean').reset_index()
-        geo_pow = pd.merge(geo_df, school_gmi, how='inner', left_on="teryt", right_on="teryt_geo")
+        #col_cent = 'dl_centroid_gmi'
+        col_cent = 'distance'
+        dist_df = distance_gmi(locations_school, locations_gmi).copy()
+
+        #school_gmi = df[['teryt_geo', 'dl_centroid_gmi']].groupby('teryt_geo').agg('mean').reset_index()
+        #geo_pow = pd.merge(geo_df, school_gmi, how='inner', left_on="teryt", right_on="teryt_geo")
+        dist_df.teryt = dist_df.teryt.astype(int)
+        geo_pow = pd.merge(geo_df, dist_df, how='left', left_on="teryt", right_on="teryt")
         
     
     teryt_filter = [int(teryt) for teryt in teryt_filter ]
@@ -72,11 +103,12 @@ def prep_map(data_level:str, teryt_filter:list=[]):
     fig_pow = px.choropleth_mapbox(
     geo_pow, geojson=geo_pow.geometry, locations=geo_pow.index, mapbox_style="carto-positron", zoom=6,color=col_cent ,height=900,
     color_continuous_scale="Magma", opacity = 0.6, hover_data=['nazwa','podpowiedz'],labels={'index':data_level,'nazwa': 'Nazwa', 'podpowiedz':'Szczegóły',
-    col_cent: "Srednia odległość od centroidy"}
+    col_cent: "Najbliższa odległość do centroidy"}
     )
 
-    return fig_pow.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0}, mapbox_center={"lat": 52.1089496, "lon": 19.443120})
+    fig_pow.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0}, mapbox_center={"lat": 52.1089496, "lon": 19.443120})
 
+    return fig_pow
 
 def get_callbacks(app):
     @app.callback(Output("page-content", "children"), [Input("url", "pathname")])
@@ -147,7 +179,7 @@ def get_callbacks(app):
                     html.Div(
                         id="tabs-content'",
                         children=[
-                            dcc.Graph(id="county-choropleth-points", figure=prep_map_point([0])
+                            dcc.Graph(id="county-choropleth-points", figure=prep_map_point([0]),
                                 ),
                             #dcc.Loading(id='loading', parent_style=loading_style),
                             dcc.Tooltip(
@@ -156,7 +188,6 @@ def get_callbacks(app):
                                 border_color="white",
                                 style={"color": "white", "width": "450px", "white-space": "normal"},
                                 loading_text="Wczytywanie danych ...",
-                                
                             ),
                         ],
                         className="mt-3",
@@ -169,17 +200,19 @@ def get_callbacks(app):
                     html.Div(
                         id="tabs-content'",
                         children=[
-                            dcc.Graph(id="county-choropleth-pow", figure=prep_map('pow')
-                                ),
-                            #dcc.Loading(id='loading', parent_style=loading_style),
-                            dcc.Tooltip(
-                            #     id="graph-tooltip-1",
-                            #     background_color="darkblue",
-                            #     border_color="white",
-                            #     style={"color": "white", "width": "450px", "white-space": "normal"},
-                            #     loading_text="Wczytywanie danych ...",
+                            dcc.Dropdown(list(school_types),list(school_types),
+                                        multi=True,id='school_types-indicator')
+                            # dcc.Graph(id="county-choropleth-pow", figure=prep_map('pow')
+                            #     ),
+                            # #dcc.Loading(id='loading', parent_style=loading_style),
+                            # dcc.Tooltip(
+                            # #     id="graph-tooltip-1",
+                            # #     background_color="darkblue",
+                            # #     border_color="white",
+                            # #     style={"color": "white", "width": "450px", "white-space": "normal"},
+                            # #     loading_text="Wczytywanie danych ...",
                                 
-                            ),
+                            # ),
                         ],
                         className="mt-3",
                     )
@@ -191,6 +224,8 @@ def get_callbacks(app):
                     html.Div(
                         id="tabs-content'",
                         children=[
+                            dcc.Dropdown(list(school_types),list(school_types),
+                                        multi=True,id='school_types-indicator'),
                             dcc.Graph(id="county-choropleth-gmi", figure=prep_map('gmi')
                                 ),
                             #dcc.Loading(id='loading', parent_style=loading_style),
