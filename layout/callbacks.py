@@ -166,7 +166,7 @@ def get_callbacks(app):
     )
     def display_selected_data(checked):
 
-        fig_pow = create_grid()
+        fig_pow = create_grid(.12, .12)
         
         return fig_pow
 
@@ -215,7 +215,7 @@ def get_callbacks(app):
                         children=[
                             dcc.Dropdown(list(school_types),list(school_types),
                                         multi=True,id='school_types-indicator'),
-                            dcc.Graph(id="county-choropleth-pow", figure=create_grid()
+                            dcc.Graph(id="county-choropleth-pow", figure=create_grid(.12, .12)
                                 ),
                             # #dcc.Loading(id='loading', parent_style=loading_style),
                             # dcc.Tooltip(

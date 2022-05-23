@@ -29,14 +29,14 @@ def prep_country_polygon():
 
     return geo_country
 
-def create_grid():
+def create_grid(w:float=.1, h:float=.1):
     geo_country = prep_country_polygon()
     school = df[['lat', 'lon','rspo']]
     school = school[~school['lon'].isnull()]
 
     ymin,xmin,ymax,xmax = 48.994068,14.185213, 54.70,24.092474
-    cell_width  = .1
-    cell_height = .1
+    cell_width  = w
+    cell_height = h
 
     grid_cells = []
     for x0 in np.arange(xmin, xmax+cell_width, cell_width ):
@@ -59,7 +59,7 @@ def create_grid():
 
     kd = KDTree(school[["lon", "lat"]].values, metric='euclidean')
     k =1
-    distances, indices = kd.query(cell_df[["gps_sz_gmi", "gps_dl_gmi"]].values, k = k, return_distance=True, dualtree=True)
+    distances, indices = kd.query(cell_df[["gps_sz_gmi", "gps_dl_gmi"]].values, k = k)
 
     schools_indices = pd.DataFrame(indices)
     schools_distances = pd.DataFrame(distances)

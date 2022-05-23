@@ -88,7 +88,7 @@ map_layout = html.Div(
                                 dcc.Tab(label="Mapa szczegółowa", value="tab-1"),
                                 #dcc.Tab(label="Powiat", value="tab-2"),
                                 dcc.Tab(label="Gmina", value="tab-3"),
-                                dcc.Tab(label="Grid 20km", value="tab-2"),
+                                dcc.Tab(label="Grid", value="tab-2"),
                             ],
                         ),
                         html.Div(id="tabs-example-content-1"),
