@@ -75,8 +75,8 @@ map_layout = html.Div(
                                 #     max=max(YEARS),
                                 #     value=[1, 440],
                                 # ),
-                                # dcc.Dropdown(list(school_types),list(school_types),
-                                #             multi=True,id='school_types-indicator')
+                                #dcc.Dropdown(list(school_types),list(school_types),
+                                #            multi=True,id='school_types-indicator')
                             ],
                             className="p-3",
                             style={"background-color": "#2D2C3B", "color": "white"},

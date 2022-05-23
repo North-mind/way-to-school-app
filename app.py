@@ -10,7 +10,7 @@ app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_e
 
 app.layout = html.Div([navbar, homepage_layout])
 
-loading_style = {'align-self': 'center'}
+#loading_style = {'align-self': 'center'}
 
 get_callbacks(app)
 

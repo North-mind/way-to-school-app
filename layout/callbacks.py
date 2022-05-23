@@ -1,18 +1,24 @@
 import dash
 from dash import Input, Output, dcc, html, no_update
 import dash_bootstrap_components as dbc
-
+import geopandas as gpd
+#from shapely.geometry import Polygon
+import numpy as np
+import matplotlib as plt
 from layout.pages.contact import contact_layout
 from layout.pages.homepage import homepage_layout
 from layout.pages.map import map_layout
 from layout.navbar import navbar
 
 import pandas as pd
+from shapely.geometry import Polygon
+import shapely as shapely
 import plotly.express as px
 import numpy as np
 import os
 from layout.KDTree_gmi import distance_gmi
-
+from layout.def_polygon_map import create_grid
+from fiona.crs import from_epsg
 import plotly.graph_objects as go
 
 
@@ -26,15 +32,18 @@ school_types = [school_type for school_type in df["Kategoria_szkoły"].unique()]
 
 adm_data = AdmUnits(data_path=os.path.join("data/admin_units_pl.geojson"))
 
-locations_school = df[['rspo', 'lat', 'lon']].copy()
-locations_gmi = pd.read_csv('data/gmi_centroid.csv')
-#locations_gmi = adm_data.get_data(data_level='gmi')
-#locations_gmi['centroid']=locations_gmi.geometry.centroid
-#locations_gmi['gps_sz_gmi'] = locations_gmi['centroid'].apply(lambda x: str(x).split(' ')[2].replace(')',''))
-#locations_gmi['gps_dl_gmi'] = locations_gmi['centroid'].apply(lambda x: str(x).split(' ')[1].replace('(',''))
-
+#prep polygon for gmi
+locations_school = df[['rspo', 'lat', 'lon','Kategoria_szkoły']].copy()
 locations_school = locations_school[~locations_school['lon'].isnull()]
-#locations_gmi[['teryt','gps_sz_gmi','gps_dl_gmi']]
+
+geo_df = adm_data.get_data(data_level='gmi')
+geo_df.teryt = geo_df.teryt.astype(int)
+geo_df['centroid']=geo_df.geometry.centroid
+geo_df['gps_sz_gmi'] = geo_df['centroid'].apply(lambda x: str(x).split(' ')[2].replace(')',''))
+geo_df['gps_dl_gmi'] = geo_df['centroid'].apply(lambda x: str(x).split(' ')[1].replace('(',''))
+locations_gmi = geo_df[['teryt', 'gps_dl_gmi', 'gps_sz_gmi']].copy()
+
+
 def prep_map_point(teryt_filter:list=[]):
 
     teryt_filter = [int(teryt) for teryt in teryt_filter ]
@@ -50,17 +59,19 @@ def prep_map_point(teryt_filter:list=[]):
         lon="lat",
         mapbox_style="carto-positron",
         zoom=6,
-        height=900,
+        height=1000,
         color="Kategoria_szkoły",
         hover_data = {'lat':False, 'lon':False, 'Kategoria_szkoły':False},
         hover_name = None,
         opacity=0.4,
         size_max=6,
         
+        
         #color_discrete_sequence=[matplotlib.to_hex(c) for c in sns.color_palette('BrBG_r', 6)],
     )
 
     fig.update_layout(
+        #mapbox_style="light", 
         margin={"r": 0, "t": 0, "l": 0, "b": 0}, 
         mapbox_center={"lat": 52.1089496, "lon": 19.443120},
         hovermode="closest")
@@ -68,14 +79,15 @@ def prep_map_point(teryt_filter:list=[]):
        
     return fig
 
-def prep_map(data_level:str, teryt_filter:list=[]):
+def prep_map(data_level:str, teryt_filter:list=[1], types_s:list=school_types):
     #adm_data = AdmUnits(data_path=os.path.join("data/admin_units_pl.geojson"))
 
     geo_df = adm_data.get_data(data_level=data_level)
     geo_df.teryt = geo_df.teryt.astype(int)
     geo_df.parent_id = geo_df.parent_id.astype(int)
+    #locations_school_1 = locations_school[locations_school['Kategoria_szkoły'].isin(types_s)].copy()
+    locations_school_1 = locations_school[['rspo', 'lat', 'lon']]
 
-    
     if data_level == 'pow':
         col_cent = 'dl_centroid_pow'
         school_pow = df[['kod_terytorialny_powiat', 'dl_centroid_pow']].groupby('kod_terytorialny_powiat').agg('min').reset_index()
@@ -83,7 +95,7 @@ def prep_map(data_level:str, teryt_filter:list=[]):
     elif data_level == 'gmi':
         #col_cent = 'dl_centroid_gmi'
         col_cent = 'distance'
-        dist_df = distance_gmi(locations_school, locations_gmi).copy()
+        dist_df = distance_gmi(locations_school_1, locations_gmi).copy()
 
         #school_gmi = df[['teryt_geo', 'dl_centroid_gmi']].groupby('teryt_geo').agg('mean').reset_index()
         #geo_pow = pd.merge(geo_df, school_gmi, how='inner', left_on="teryt", right_on="teryt_geo")
@@ -154,21 +166,22 @@ def get_callbacks(app):
     )
     def display_selected_data(checked):
 
-        fig_pow = prep_map('pow', checked)
+        fig_pow = create_grid()
         
         return fig_pow
 
-    @app.callback(
-        Output("county-choropleth-gmi", "figure"),
-        [
-            Input('input', 'checked')
-        ],
-    )
-    def display_selected_data(checked):
+    # @app.callback(
+    #     Output("county-choropleth-gmi", "figure"),
+    #     [
+    #         Input('input', 'checked'),
+    #         Input('school_types-indicator','s_type')
+    #     ],
+    # )
+    # def display_selected_data(checked, s_type):
 
-        fig_gmi = prep_map('gmi', checked)
+    #     fig_gmi = prep_map('gmi', checked,s_type)
         
-        return fig_gmi
+    #     return fig_gmi
 
     @app.callback(Output("tabs-example-content-1", "children"), Input("tabs-example-1", "value"))
 
@@ -201,9 +214,9 @@ def get_callbacks(app):
                         id="tabs-content'",
                         children=[
                             dcc.Dropdown(list(school_types),list(school_types),
-                                        multi=True,id='school_types-indicator')
-                            # dcc.Graph(id="county-choropleth-pow", figure=prep_map('pow')
-                            #     ),
+                                        multi=True,id='school_types-indicator'),
+                            dcc.Graph(id="county-choropleth-pow", figure=create_grid()
+                                ),
                             # #dcc.Loading(id='loading', parent_style=loading_style),
                             # dcc.Tooltip(
                             # #     id="graph-tooltip-1",
@@ -242,6 +255,19 @@ def get_callbacks(app):
                     )
                 ]
             )
+
+    @app.callback(
+        Output("county-choropleth-gmi", "figure"),
+        [
+            Input('input', 'checked'),
+            Input('school_types-indicator','s_type')
+        ],
+    )
+    def display_selected_data(checked, s_type):
+
+        fig_gmi = prep_map('gmi', checked,s_type)
+        
+        return fig_gmi
 
     @app.callback(
         Output("graph-tooltip-1", "show"),

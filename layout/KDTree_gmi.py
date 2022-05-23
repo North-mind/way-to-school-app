@@ -13,7 +13,7 @@ def distance_gmi(locations_school, locations_gmi, Kategoria_szkoły = [], k = 1)
 
     kd = KDTree(locations_gmi[["gps_sz_gmi", "gps_dl_gmi"]].values, metric='euclidean')
 
-    distances, indices = kd.query(locations_school[["lon", "lat"]], k = k)
+    distances, indices = kd.query(locations_school[["lon", "lat"]].values, k = k)
 
     # #dataframe distanse
     # dist = pd.DataFrame(distances)
