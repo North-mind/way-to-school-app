@@ -45,6 +45,14 @@ def BallTree_find_points(df_school, df_polygon, k:int=1):
     distances, indices = ball.query(df_polygon[["gps_sz_gmi_rad", "gps_dl_gmi_rad"]].values, k = k)
     return distances, indices
 
+def init_data(geo_df):
+    global g_country
+    country_regions = geo_df.geometry.explode().tolist()
+    max_region = max(country_regions, key=lambda a: a.area)
+    g_country = max_region
+
+    return g_country
+
 def prep_country_polygon():
     adm_data = AdmUnits(data_path=os.path.join(data_dir, geojson_file))
     geo_df = adm_data.get_data(data_level="pow") 
@@ -58,10 +66,10 @@ def create_grid(w:float=.1, h:float=.1):
     geo_country = prep_country_polygon()
     school = df[['lat', 'lon','rspo', 'Nazwa', 'Miejscowość', 'Województwo']]
     school = school[~school['lon'].isnull()]
-
+    g_country = init_data(geo_country)
     ymin,xmin,ymax,xmax = 48.994068,14.185213, 54.70,24.092474
-    cell_width  = 0.12
-    cell_height = 0.12
+    cell_width  = w
+    cell_height = h
 
     grid_cells = []
     for x0 in np.arange(xmin, xmax+cell_width, cell_width ):
@@ -70,10 +78,10 @@ def create_grid(w:float=.1, h:float=.1):
             y1 = y0+cell_height
             new_cell = shapely.geometry.box(x0, y0, x1, y1)
             #if new_cell.intersects(g_country):
-            #if new_cell.intersects(geo_country.geometry):
-            grid_cells.append(new_cell)
-            #else:
-            #    pass
+            if new_cell.intersects(g_country):
+                grid_cells.append(new_cell)
+            else:
+                pass
 
     cell_df = gpd.GeoDataFrame(grid_cells, columns=['geometry'], crs=from_epsg(4326))
     cell_df['centroid'] = cell_df.geometry.centroid
@@ -97,7 +105,7 @@ def create_grid(w:float=.1, h:float=.1):
     cell_df_copy_2 = cell_df[cell_df['is_incentroid']==True].copy()
 
     cell_df['distance_2'] = cell_df['distance']*-1
-    cell_df = cell_df[cell_df['is_incentroid']==True]
+    #cell_df = cell_df[cell_df['is_incentroid']==True]
 
     fig = px.choropleth_mapbox(
     cell_df,
