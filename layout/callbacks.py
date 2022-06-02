@@ -1,126 +1,16 @@
 import dash
 from dash import Input, Output, dcc, html, no_update
 import dash_bootstrap_components as dbc
-import geopandas as gpd
-#from shapely.geometry import Polygon
-import numpy as np
-import matplotlib as plt
 from layout.pages.contact import contact_layout
 from layout.pages.homepage import homepage_layout
 from layout.pages.map import map_layout
 from layout.navbar import navbar
+from layout.def_polygon_map import get_df,get_adm_data,prep_map_point,school_types,prep_map,create_grid
+import time
 
-import pandas as pd
-from shapely.geometry import Polygon
-import shapely as shapely
-import plotly.express as px
-import numpy as np
-import os
-from layout.KDTree_gmi import distance_gmi
-from layout.def_polygon_map import create_grid
-from fiona.crs import from_epsg
-import plotly.graph_objects as go
+df = get_df()
 
-
-#from sklearn.neighbors import KDTree
-
-from geodata.adm_units import AdmUnits
-      
-df = pd.read_csv("data/school.csv", usecols=['rspo','Kategoria_szkoły', 'lon', 'lat', 'kod_terytorialny_powiat','teryt_geo','Nazwa', 'Status','Województwo','Powiat','Miejscowość', 'Ulica', 'Nr_budynku','Nr_lokalu','dl_centroid_pow', 'dl_centroid_gmi'])
-
-school_types = [school_type for school_type in df["Kategoria_szkoły"].unique()]
-
-adm_data = AdmUnits(data_path=os.path.join("data/admin_units_pl.geojson"))
-
-#prep polygon for gmi
-locations_school = df[['rspo', 'lat', 'lon','Kategoria_szkoły']].copy()
-locations_school = locations_school[~locations_school['lon'].isnull()]
-
-geo_df = adm_data.get_data(data_level='gmi')
-geo_df.teryt = geo_df.teryt.astype(int)
-geo_df['centroid']=geo_df.geometry.centroid
-geo_df['gps_sz_gmi'] = geo_df['centroid'].apply(lambda x: str(x).split(' ')[2].replace(')',''))
-geo_df['gps_dl_gmi'] = geo_df['centroid'].apply(lambda x: str(x).split(' ')[1].replace('(',''))
-locations_gmi = geo_df[['teryt', 'gps_dl_gmi', 'gps_sz_gmi']].copy()
-
-
-def prep_map_point(teryt_filter:list=[]):
-
-    teryt_filter = [int(teryt) for teryt in teryt_filter ]
-
-    if len(teryt_filter)==1 and teryt_filter[0]==0:
-        df_1 = df.copy()
-    else:
-        df_1 = df[df['kod_terytorialny_powiat'].isin(teryt_filter)].copy()
-
-    fig = px.scatter_mapbox(
-        data_frame = df_1,
-        lat="lon",
-        lon="lat",
-        mapbox_style="carto-positron",
-        zoom=6,
-        height=1000,
-        color="Kategoria_szkoły",
-        hover_data = {'lat':False, 'lon':False, 'Kategoria_szkoły':False},
-        hover_name = None,
-        opacity=0.4,
-        size_max=6,
-        
-        
-        #color_discrete_sequence=[matplotlib.to_hex(c) for c in sns.color_palette('BrBG_r', 6)],
-    )
-
-    fig.update_layout(
-        #mapbox_style="light", 
-        margin={"r": 0, "t": 0, "l": 0, "b": 0}, 
-        mapbox_center={"lat": 52.1089496, "lon": 19.443120},
-        hovermode="closest")
-
-       
-    return fig
-
-def prep_map(data_level:str, teryt_filter:list=[1], types_s:list=school_types):
-    #adm_data = AdmUnits(data_path=os.path.join("data/admin_units_pl.geojson"))
-
-    geo_df = adm_data.get_data(data_level=data_level)
-    geo_df.teryt = geo_df.teryt.astype(int)
-    geo_df.parent_id = geo_df.parent_id.astype(int)
-    #locations_school_1 = locations_school[locations_school['Kategoria_szkoły'].isin(types_s)].copy()
-    locations_school_1 = locations_school[['rspo', 'lat', 'lon']]
-
-    if data_level == 'pow':
-        col_cent = 'dl_centroid_pow'
-        school_pow = df[['kod_terytorialny_powiat', 'dl_centroid_pow']].groupby('kod_terytorialny_powiat').agg('min').reset_index()
-        geo_pow = pd.merge(geo_df, school_pow, how='inner', left_on="teryt", right_on="kod_terytorialny_powiat") 
-    elif data_level == 'gmi':
-        #col_cent = 'dl_centroid_gmi'
-        col_cent = 'distance'
-        dist_df = distance_gmi(locations_school_1, locations_gmi).copy()
-
-        #school_gmi = df[['teryt_geo', 'dl_centroid_gmi']].groupby('teryt_geo').agg('mean').reset_index()
-        #geo_pow = pd.merge(geo_df, school_gmi, how='inner', left_on="teryt", right_on="teryt_geo")
-        dist_df.teryt = dist_df.teryt.astype(int)
-        geo_pow = pd.merge(geo_df, dist_df, how='left', left_on="teryt", right_on="teryt")
-        
-    
-    teryt_filter = [int(teryt) for teryt in teryt_filter ]
-    if teryt_filter == []:
-        geo_pow = geo_pow.copy()
-    elif len(teryt_filter)>0 and data_level=='pow':
-        geo_pow = geo_pow[geo_pow['teryt'].isin(teryt_filter)]
-    elif len(teryt_filter)>0 and data_level=='gmi':
-        geo_pow = geo_pow[geo_pow['parent_id'].isin(teryt_filter)]
-    
-    
-    fig_pow = px.choropleth_mapbox(
-    geo_pow, geojson=geo_pow.geometry, locations=geo_pow.index, mapbox_style="carto-positron", zoom=6,color=col_cent ,height=900,
-    color_continuous_scale="Magma", opacity = 0.6, hover_data=['nazwa','podpowiedz'],labels={'index':data_level,'nazwa': 'Nazwa', 'podpowiedz':'Szczegóły',
-    col_cent: "Najbliższa odległość do centroidy"}
-    )
-
-    fig_pow.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0}, mapbox_center={"lat": 52.1089496, "lon": 19.443120})
-
-    return fig_pow
+school_types = school_types()
 
 def get_callbacks(app):
     @app.callback(Output("page-content", "children"), [Input("url", "pathname")])
@@ -149,37 +39,57 @@ def get_callbacks(app):
     @app.callback(
         Output("county-choropleth-points", "figure"),#Output('loading', 'parent_style'),
         [
-            Input('input', 'checked')
+            Input('input', 'checked'),
+            # Input("loading-input-1", "value")
         ],
     )
+    # def input_triggers_spinner(value):
+    #    time.sleep(1)
+
+    #    return value
+
     def display_selected_data(checked):
 
         fig = prep_map_point(checked)
         
         return fig
     
-    @app.callback(
-        Output("county-choropleth-pow", "figure"),
-        [
-            Input('input', 'checked')
-        ],
-    )
-    def display_selected_data(checked):
+    # @app.callback(Output("tabs-example-1", "children"), Input("loading-1", "value"))
+    # def input_triggers_spinner(value):
+    #     time.sleep(1)
+    #     return value
 
-        fig_pow = create_grid(.12, .12)
-        
-        return fig_pow
+    # @app.callback(Output("tab-2", "children"), Input("loading-2", "value"))
+    # def input_triggers_spinner(value):
+    #     time.sleep(1)
+    #     return value
+
+    # @app.callback(Output("tab-3", "children"), Input("loading-3", "value"))
+    # def input_triggers_spinner(value):
+    #     time.sleep(1)
+    #     return value
+
+    # @app.callback(Output("county-choropleth-pow", "children"), Input("loading-input-2", "value"))
+    # def input_triggers_spinner(value):
+    #     time.sleep(1)
+    #     return value
+
+    
 
     # @app.callback(
     #     Output("county-choropleth-gmi", "figure"),
     #     [
     #         Input('input', 'checked'),
-    #         Input('school_types-indicator','s_type')
-    #     ],
+    #       #  Input('school_types-indicator')#,'s_type')
+    #     ],dcc.Loading(
+                            #     id="loading-3",
+                            #     type="default",
+                            #     children=html.Div(id="county-choropleth-gmi")
+                            # ),
     # )
-    # def display_selected_data(checked, s_type):
+    # def display_selected_data(checked):#, s_type):
 
-    #     fig_gmi = prep_map('gmi', checked,s_type)
+    #     fig_gmi = prep_map('gmi')#,s_type)
         
     #     return fig_gmi
 
@@ -189,12 +99,24 @@ def get_callbacks(app):
         if tab == "tab-1":
             return html.Div(
                 [
+                    dcc.Loading(
+                                id="loading-1",
+                                type="default",
+                                children=html.Div(id="tab-1")
+                            ),
                     html.Div(
                         id="tabs-content'",
+                        
                         children=[
+                            # dcc.Loading(
+                            #     id="loading-1",
+                            #     type="default",
+                            #     children=html.Div(id="county-choropleth-points")
+                            # ),
                             dcc.Graph(id="county-choropleth-points", figure=prep_map_point([0]),
                                 ),
-                            #dcc.Loading(id='loading', parent_style=loading_style),
+                            #dcc.Loading(id='loading-input-1")', type="circle"),
+                            
                             dcc.Tooltip(
                                 id="graph-tooltip-1",
                                 background_color="darkblue",
@@ -210,17 +132,27 @@ def get_callbacks(app):
         elif tab == "tab-2":
             return html.Div(
                 [
+                    dcc.Loading(
+                                id="loading-2",
+                                type="default",
+                                children=html.Div(id="tab-2")
+                       ),
                     html.Div(
                         id="tabs-content'",
                         children=[
-                            dcc.Dropdown(list(school_types),list(school_types),
-                                        multi=True,id='school_types-indicator'),
+                            dcc.Dropdown(list(school_types),value='Szkoła podstawowa',
+                                        multi=False,
+                                        id='school_types-indicator-1'),
                             dcc.Graph(id="county-choropleth-pow", figure=create_grid(.12, .12)
                                 ),
-                            # #dcc.Loading(id='loading', parent_style=loading_style),
+                            # dcc.Loading(
+                            #     id="loading-2",
+                            #     type="default",
+                            #     children=html.Div(id="county-choropleth-pow")
+                            # ),
                             # dcc.Tooltip(
                             # #     id="graph-tooltip-1",
-                            # #     background_color="darkblue",
+                            # #     backvalue=ground_color="darkblue",
                             # #     border_color="white",
                             # #     style={"color": "white", "width": "450px", "white-space": "normal"},
                             # #     loading_text="Wczytywanie danych ...",
@@ -234,14 +166,23 @@ def get_callbacks(app):
         elif tab == "tab-3":
             return html.Div(
                 [
+                    dcc.Loading(
+                                id="loading-3",
+                                type="default",
+                                children=html.Div(id="tab-3")
+                            ),
                     html.Div(
                         id="tabs-content'",
                         children=[
-                            dcc.Dropdown(list(school_types),list(school_types),
-                                        multi=True,id='school_types-indicator'),
+                            dcc.Dropdown(list(school_types),value='Szkoła podstawowa',
+                                        multi=False,id='school_types-indicator'),
                             dcc.Graph(id="county-choropleth-gmi", figure=prep_map('gmi')
                                 ),
-                            #dcc.Loading(id='loading', parent_style=loading_style),
+                            # dcc.Loading(
+                            #     id="loading-3",
+                            #     type="default",
+                            #     children=html.Div(id="county-choropleth-gmi")
+                            # ),
                             dcc.Tooltip(
                             #     id="graph-tooltip-1",
                             #     background_color="darkblue",
@@ -260,14 +201,36 @@ def get_callbacks(app):
         Output("county-choropleth-gmi", "figure"),
         [
             Input('input', 'checked'),
-            Input('school_types-indicator','s_type')
+            Input('school_types-indicator','value')
         ],
     )
-    def display_selected_data(checked, s_type):
-
-        fig_gmi = prep_map('gmi', checked,s_type)
+    def display_selected_data(checked, value):
+  
+        fig_gmi = prep_map('gmi',value, checked)
         
         return fig_gmi
+
+    # @app.callback(Output("county-choropleth-gmi", "children"), Input("loading-input-3", "value"))
+    # def input_triggers_spinner(value):
+    #     time.sleep(6)
+    #     return value
+    # def display_selected(checked, value):
+  
+    #     return f'Output: {value}'
+    @app.callback(
+        Output("county-choropleth-pow", "figure"),
+        [
+            Input('input', 'checked'),
+            Input('school_types-indicator-1','value')
+        ],
+    )
+    
+    def display_selected_data(checked, value):
+
+        fig_pow = create_grid(.12, .12, value)
+        
+        return fig_pow    
+       
 
     @app.callback(
         Output("graph-tooltip-1", "show"),

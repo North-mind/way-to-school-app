@@ -37,7 +37,7 @@ def make_treeview_data(filterLevel=0, filterColumn='Województwo', filterValue=N
 data_tree = make_treeview_data()
 
 # Options
-#school_types = [school_type for school_type in df["Kategoria_szkoły"].unique()]
+school_types = [school_type for school_type in df["Kategoria_szkoły"].unique()]
 public_status = [{"label": status, "value": status} for status in df["Status"].unique()]
 
 # YEARS = [0, 1, 2, 3, 4, 5, 6, 7]external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -84,9 +84,10 @@ map_layout = html.Div(
                         dcc.Tabs(
                             id="tabs-example-1",
                             value="tab-1",
+
                             children=[
                                 dcc.Tab(label="Mapa szczegółowa", value="tab-1"),
-                                #dcc.Tab(label="Powiat", value="tab-2"),
+                                
                                 dcc.Tab(label="Gmina", value="tab-3"),
                                 dcc.Tab(label="Grid", value="tab-2"),
                             ],
@@ -100,7 +101,8 @@ map_layout = html.Div(
                         #            figure=fig
                         #        ),
                         #    ],
-                        #    className="mt-3"
+       #dcc.Dropdown(list(school_types),list(school_types),
+                                #            multi=True,id='school_types-indicator')                 #    className="mt-3"
                         # ),
                     ],
                     width=10,
@@ -110,7 +112,7 @@ map_layout = html.Div(
                      children=[
                          html.Div(
                              children=[
-
+                                    
                                     dash_treeview_antd.TreeView(
                                         id='input',
                                         multiple=True,
