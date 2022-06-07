@@ -227,7 +227,7 @@ def get_callbacks(app):
     
     def display_selected_data(checked, value):
 
-        fig_pow = create_grid(.12, .12, value)
+        fig_pow = create_grid(.12, .12, value, checked)
         
         return fig_pow    
        

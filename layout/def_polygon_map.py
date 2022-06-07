@@ -17,7 +17,7 @@ df = pd.read_csv('data/school.csv')
 
 locations_school = df[['rspo', 'lat', 'lon','Kategoria_szkoły']].copy()
 
-locations_school = locations_school[~locations_school['lon'].isnull()]
+locations_school = locations_school[~locations_school['lat'].isnull()]
 
 
 #dataframe
@@ -89,7 +89,12 @@ def prep_map(data_level:str, types_s:str='Szkoła podstawowa', teryt_filter:list
     #     typ = school_type
     # displaying data with gender = male only
     locations_school_ = locations_school[locations_school["Kategoria_szkoły"]==types_s]
-    #locations_school_ = locations_school.copy()
+    #locations_school_ = locations_school.copy()teryt_filter = [int(teryt) for teryt in teryt_filter ]
+    # if len(teryt_filter)>0 and data_level=='pow':
+    #     geo_pow = geo_pow[geo_pow['teryt'].isin(teryt_filter)]
+    # elif teryt_filter[0] != 1 and len(teryt_filter)!=1 and data_level=='gmi':
+    #     geo_pow = geo_pow[(geo_pow['parent_id'].isin(teryt_filter))]
+    
     locations_school_1 = locations_school_[['rspo', 'lat', 'lon']]
     geo_df['centroid']=geo_df.geometry.centroid
     geo_df['gps_sz_gmi'] = geo_df['centroid'].apply(lambda x: str(x).split(' ')[2].replace(')',''))
@@ -172,11 +177,16 @@ def prep_country_polygon():
 
     return geo_country
 
-def create_grid(w:float=.15, h:float=.15, school_type:str='Szkoła podstawowa'):
+
+def create_grid(w:float=.15, h:float=.15, school_type:str='Szkoła podstawowa', teryt_filter:list=[]):
     geo_country = prep_country_polygon()
     school = df[df['Kategoria_szkoły']==school_type][['lat', 'lon','rspo', 'Nazwa', 'Miejscowość', 'Województwo']].copy()
     school = school[~school['lon'].isnull()]
     g_country = init_data(geo_country)
+    
+    geo_gmi = get_adm_data('gmi')
+    geo_gmi.teryt = geo_gmi.teryt.astype(int)
+
     ymin,xmin,ymax,xmax = 48.994068,14.185213, 54.70,24.092474
     #xmin, ymin, xmax, ymax= geo_country.total_bounds
     cell_width  = w
@@ -199,7 +209,8 @@ def create_grid(w:float=.15, h:float=.15, school_type:str='Szkoła podstawowa'):
     cell_df['is_incentroid'] = cell_df.apply(lambda x: geo_country.contains(x.centroid), axis=1)
     cell_df['gps_sz_gmi'] = cell_df['centroid'].apply(lambda x: str(x).split(' ')[2].replace(')',''))
     cell_df['gps_dl_gmi'] = cell_df['centroid'].apply(lambda x: str(x).split(' ')[1].replace('(',''))
-
+    #cell_df['teryt_gmi'] = cell_df['centroid'].map(lambda x: find_gmi(x))
+    
     kd = KDTree(school[["lon", "lat"]].values, metric='euclidean')
     k =1
     distances, indices = kd.query(cell_df[["gps_sz_gmi", "gps_dl_gmi"]].values, k = k)
@@ -216,13 +227,14 @@ def create_grid(w:float=.15, h:float=.15, school_type:str='Szkoła podstawowa'):
     cell_df_copy_2 = cell_df[cell_df['is_incentroid']==True].copy()
     cell_df['distance_2'] = cell_df['distance']*-1
     #cell_df = cell_df[cell_df['is_incentroid']==True]
-
+    cell_df = cell_df.sjoin(geo_gmi, how="left", predicate='intersects')
+    
     fig = px.choropleth_mapbox(
     cell_df,
     geojson=cell_df.geometry, 
     locations=cell_df.index, 
     mapbox_style="carto-positron", 
-    hover_data = {'lon':True, 'lat':True,'gps_sz_gmi':True, 'gps_dl_gmi':True, 'Nazwa':True, 'Miejscowość':True, "Województwo":True},
+    hover_data = {'lon':True, 'lat':True,'podpowiedz':True, 'gps_sz_gmi':True, 'gps_dl_gmi':True,'Nazwa':True, 'Miejscowość':True, "Województwo":True},
     zoom=6, 
     color='distance_2',
     color_continuous_scale="Magma",
